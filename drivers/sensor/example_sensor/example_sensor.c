@@ -5,6 +5,7 @@
 
 #define DT_DRV_COMPAT zephyr_example_sensor
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -14,6 +15,8 @@
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(example_sensor, CONFIG_SENSOR_LOG_LEVEL);
+
+static FILE *csv_file = NULL;
 
 struct example_sensor_data
 {
@@ -28,12 +31,39 @@ struct example_sensor_config
 static int example_sensor_sample_fetch(const struct device *dev,
 									   enum sensor_channel chan)
 {
-	// const struct example_sensor_config *config = dev->config;
 	struct example_sensor_data *data = dev->data;
 
-	// data->state = gpio_pin_get_dt(&config->input);
+	if (!csv_file)
+	{
+		csv_file = fopen("/home/barto/Escritorio/Repos/workspace/zephyr-mocked-device/MOCK_DATA.csv", "r");
 
-	data->state = 20 + rand() % 11;
+		if (!csv_file)
+		{
+			LOG_ERR("Failed to open CSV file");
+			return -ENOENT;
+		}
+	}
+
+	char line[128];
+
+	if (fgets(line, sizeof(line), csv_file))
+	{
+		int value;
+		if (sscanf(line, "%d", &value) == 1)
+		{
+			data->state = value;
+		}
+		else
+		{
+			LOG_ERR("Malformed CSV row");
+			return -EINVAL;
+		}
+	}
+	else
+	{
+		fclose(csv_file);
+		csv_file = NULL;
+	}
 
 	return 0;
 }
@@ -78,8 +108,6 @@ static int example_sensor_init(const struct device *dev)
 		LOG_ERR("Could not configure input GPIO (%d)", ret);
 		return ret;
 	}
-
-	srand((unsigned int)time(NULL));
 
 	return 0;
 }
