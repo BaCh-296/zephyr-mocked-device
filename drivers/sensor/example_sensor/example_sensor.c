@@ -10,43 +10,25 @@
 #include <time.h>
 
 #include <zephyr/device.h>
-#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(example_sensor, CONFIG_SENSOR_LOG_LEVEL);
 
-static FILE *csv_file = NULL;
+LOG_MODULE_REGISTER(example_sensor, CONFIG_SENSOR_LOG_LEVEL);
 
 struct example_sensor_data
 {
 	int state;
+	FILE *csv_file;
 };
 
-struct example_sensor_config
-{
-	struct gpio_dt_spec input;
-};
-
-static int example_sensor_sample_fetch(const struct device *dev,
-									   enum sensor_channel chan)
+static int example_sensor_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	struct example_sensor_data *data = dev->data;
 
-	if (!csv_file)
-	{
-		csv_file = fopen("/home/barto/Escritorio/Repos/workspace/zephyr-mocked-device/MOCK_DATA.csv", "r");
+	char line[CONFIG_BUFFER_SIZE];
 
-		if (!csv_file)
-		{
-			LOG_ERR("Failed to open CSV file");
-			return -ENOENT;
-		}
-	}
-
-	char line[128];
-
-	if (fgets(line, sizeof(line), csv_file))
+	if (fgets(line, sizeof(line), data->csv_file))
 	{
 		int value;
 		if (sscanf(line, "%d", &value) == 1)
@@ -61,8 +43,8 @@ static int example_sensor_sample_fetch(const struct device *dev,
 	}
 	else
 	{
-		fclose(csv_file);
-		csv_file = NULL;
+		fclose(data->csv_file);
+		data->csv_file = NULL;
 	}
 
 	return 0;
@@ -92,36 +74,28 @@ static DEVICE_API(sensor, example_sensor_api) = {
 
 static int example_sensor_init(const struct device *dev)
 {
-	const struct example_sensor_config *config = dev->config;
+	struct example_sensor_data *data = dev->data;
 
-	int ret;
-
-	if (!device_is_ready(config->input.port))
+	if (!data->csv_file)
 	{
-		LOG_ERR("Input GPIO not ready");
-		return -ENODEV;
-	}
+		data->csv_file = fopen(CONFIG_CSV_FILE_PATH, "r");
 
-	ret = gpio_pin_configure_dt(&config->input, GPIO_INPUT);
-	if (ret < 0)
-	{
-		LOG_ERR("Could not configure input GPIO (%d)", ret);
-		return ret;
+		if (!data->csv_file)
+		{
+			LOG_ERR("Failed to open CSV file");
+			return -ENOENT;
+		}
 	}
 
 	return 0;
 }
 
-#define EXAMPLE_SENSOR_INIT(i)                                              \
-	static struct example_sensor_data example_sensor_data_##i;              \
-                                                                            \
-	static const struct example_sensor_config example_sensor_config_##i = { \
-		.input = GPIO_DT_SPEC_INST_GET(i, input_gpios),                     \
-	};                                                                      \
-                                                                            \
-	DEVICE_DT_INST_DEFINE(i, example_sensor_init, NULL,                     \
-						  &example_sensor_data_##i,                         \
-						  &example_sensor_config_##i, POST_KERNEL,          \
+#define EXAMPLE_SENSOR_INIT(i)                                 \
+	static struct example_sensor_data example_sensor_data_##i; \
+                                                               \
+	DEVICE_DT_INST_DEFINE(i, example_sensor_init, NULL,        \
+						  &example_sensor_data_##i,            \
+						  NULL, POST_KERNEL,                   \
 						  CONFIG_SENSOR_INIT_PRIORITY, &example_sensor_api);
 
 DT_INST_FOREACH_STATUS_OKAY(EXAMPLE_SENSOR_INIT)
