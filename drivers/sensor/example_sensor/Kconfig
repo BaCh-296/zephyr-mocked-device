@@ -11,7 +11,7 @@ config EXAMPLE_SENSOR
 
 config CSV_FILE_PATH 
 	string "Path to csv file"
-	default "/home/barto/Escritorio/Repos/workspace/zephyr-mocked-device/MOCK_DATA.csv" 
+	default "../MOCK_DATA.csv" 
 
 config BUFFER_SIZE
 	int "Line buffer size"

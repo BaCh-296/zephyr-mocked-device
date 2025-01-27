@@ -4,20 +4,51 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
-
+#include <zephyr/device.h>
+#include <zephyr/drivers/sensor.h>
 #include <app_version.h>
 
-LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
+LOG_MODULE_REGISTER(main);
 
-int main(void)
+#define TIMER_INTERVAL_MS 1
+
+static const struct device *sensor;
+static struct sensor_value last_val = {0};
+
+static void timer_callback(struct k_timer *dummy)
+{
+	int ret;
+	struct sensor_value val;
+
+	ret = sensor_sample_fetch(sensor);
+	if (ret < 0)
+	{
+		LOG_ERR("Could not fetch sample (%d)", ret);
+		return;
+	}
+
+	ret = sensor_channel_get(sensor, SENSOR_CHAN_AMBIENT_TEMP, &val);
+	if (ret < 0)
+	{
+		LOG_ERR("Could not get sample (%d)", ret);
+		return;
+	}
+
+	if (last_val.val1 != val.val1)
+	{
+		LOG_INF("Temperature: %d", val.val1);
+	}
+
+	last_val = val;
+}
+
+// Define a timer
+K_TIMER_DEFINE(my_timer, timer_callback, NULL);
+
+int main()
 {
 	LOG_INF("Zephyr Example Application %s\n", APP_VERSION_STRING);
-
-	int ret;
-	const struct device *sensor;
-	struct sensor_value last_val = {0}, val;
 
 	sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
 
@@ -27,33 +58,8 @@ int main(void)
 		return 0;
 	}
 
-	while (1)
-	{
-
-		ret = sensor_sample_fetch(sensor);
-		if (ret < 0)
-		{
-			LOG_ERR("Could not fetch sample (%d)", ret);
-			return 0;
-		}
-
-		ret = sensor_channel_get(sensor, SENSOR_CHAN_AMBIENT_TEMP, &val);
-		if (ret < 0)
-		{
-			LOG_ERR("Could not get sample (%d)", ret);
-			return 0;
-		}
-
-		if (last_val.val1 != val.val1)
-		{
-			LOG_INF("Temperature: %d",
-					last_val.val1);
-		}
-
-		last_val = val;
-
-		k_sleep(K_MSEC(2000));
-	};
+	// Start the timer with the specified interval
+	k_timer_start(&my_timer, K_NO_WAIT, K_MSEC(TIMER_INTERVAL_MS));
 
 	return 0;
-};
+}
