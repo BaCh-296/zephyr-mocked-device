@@ -11,14 +11,12 @@
 
 LOG_MODULE_REGISTER(main);
 
-#define TIMER_INTERVAL_MS 1
-
 static const struct device *sensor;
-static struct sensor_value last_val = {0};
 
 static void timer_callback(struct k_timer *dummy)
 {
 	int ret;
+	static struct sensor_value last_val = {0};
 	struct sensor_value val;
 
 	ret = sensor_sample_fetch(sensor);
@@ -50,16 +48,16 @@ int main()
 {
 	LOG_INF("Zephyr Example Application %s\n", APP_VERSION_STRING);
 
-	sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
+	// sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
 
-	if (!device_is_ready(sensor))
+	while (!device_is_ready(sensor))
 	{
-		LOG_ERR("Sensor not ready");
-		return 0;
+		LOG_WRN("Sensor not ready");
+		k_sleep(K_MSEC(100));
 	}
 
 	// Start the timer with the specified interval
-	k_timer_start(&my_timer, K_NO_WAIT, K_MSEC(TIMER_INTERVAL_MS));
+	k_timer_start(&my_timer, K_NO_WAIT, K_MSEC(CONFIG_TIMER_INTERVAL_MS));
 
 	return 0;
 }

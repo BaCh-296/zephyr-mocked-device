@@ -10,6 +10,10 @@ menu "Zephyr"
 source "Kconfig.zephyr"
 endmenu
 
+config  TIMER_INTERVAL_MS
+	int "Timer interval in miliseconds"
+	default 500
+
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"

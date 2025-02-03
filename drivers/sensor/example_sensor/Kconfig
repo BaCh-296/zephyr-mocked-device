@@ -9,10 +9,10 @@ config EXAMPLE_SENSOR
 	help
 	  Enable example sensor
 
-config CSV_FILE_PATH 
+config EXAMPLE_SENSOR_CSV_FILE_PATH 
 	string "Path to csv file"
 	default "../MOCK_DATA.csv" 
 
-config BUFFER_SIZE
+config EXAMPLE_SENSOR_BUFFER_SIZE
 	int "Line buffer size"
 	default 128

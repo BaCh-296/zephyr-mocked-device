@@ -26,7 +26,7 @@ static int example_sensor_sample_fetch(const struct device *dev, enum sensor_cha
 {
 	struct example_sensor_data *data = dev->data;
 
-	char line[CONFIG_BUFFER_SIZE];
+	char line[CONFIG_EXAMPLE_SENSOR_BUFFER_SIZE];
 
 	if (fgets(line, sizeof(line), data->csv_file))
 	{
@@ -78,7 +78,7 @@ static int example_sensor_init(const struct device *dev)
 
 	if (!data->csv_file)
 	{
-		data->csv_file = fopen(CONFIG_CSV_FILE_PATH, "r");
+		data->csv_file = fopen(CONFIG_EXAMPLE_SENSOR_CSV_FILE_PATH, "r");
 
 		if (!data->csv_file)
 		{
