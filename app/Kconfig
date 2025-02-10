@@ -12,7 +12,7 @@ endmenu
 
 config  TIMER_INTERVAL_MS
 	int "Timer interval in miliseconds"
-	default 500
+	default 1
 
 module = APP
 module-str = APP

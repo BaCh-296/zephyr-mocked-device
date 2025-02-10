@@ -26,25 +26,32 @@ static int example_sensor_sample_fetch(const struct device *dev, enum sensor_cha
 {
 	struct example_sensor_data *data = dev->data;
 
-	char line[CONFIG_EXAMPLE_SENSOR_BUFFER_SIZE];
-
-	if (fgets(line, sizeof(line), data->csv_file))
+	if (!data->csv_file)
 	{
-		int value;
-		if (sscanf(line, "%d", &value) == 1)
+		LOG_ERR("CSV file is not open");
+		return -ENOENT;
+	}
+
+	int value;
+	if (fscanf(data->csv_file, "%d", &value) == 1)
+	{
+		data->state = value;
+	}
+	else
+	{
+		if (feof(data->csv_file))
 		{
-			data->state = value;
+			LOG_INF("CSV file ended, stopping sensor updates");
+			fclose(data->csv_file);
+			data->csv_file = NULL;
+			data->state = 0;
+			return -ENODATA;
 		}
-		else
+
 		{
 			LOG_ERR("Malformed CSV row");
 			return -EINVAL;
 		}
-	}
-	else
-	{
-		fclose(data->csv_file);
-		data->csv_file = NULL;
 	}
 
 	return 0;
@@ -59,6 +66,11 @@ static int example_sensor_channel_get(const struct device *dev,
 	if (chan != SENSOR_CHAN_AMBIENT_TEMP)
 	{
 		return -ENOTSUP;
+	}
+
+	if (data->state == 0)
+	{
+		return -ENODATA;
 	}
 
 	val->val1 = data->state;

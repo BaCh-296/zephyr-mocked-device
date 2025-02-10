@@ -11,7 +11,11 @@
 
 LOG_MODULE_REGISTER(main);
 
+static void timer_callback(struct k_timer *dummy);
+
 static const struct device *sensor;
+
+K_TIMER_DEFINE(my_timer, timer_callback, NULL);
 
 static void timer_callback(struct k_timer *dummy)
 {
@@ -20,14 +24,30 @@ static void timer_callback(struct k_timer *dummy)
 	struct sensor_value val;
 
 	ret = sensor_sample_fetch(sensor);
-	if (ret < 0)
+
+	if (ret == -ENODATA)
+	{
+		LOG_INF("End of csv file.");
+		k_timer_stop(&my_timer);
+		return;
+	}
+
+	else if (ret < 0)
 	{
 		LOG_ERR("Could not fetch sample (%d)", ret);
 		return;
 	}
 
 	ret = sensor_channel_get(sensor, SENSOR_CHAN_AMBIENT_TEMP, &val);
-	if (ret < 0)
+
+	if (ret == -ENODATA)
+	{
+		LOG_INF("No more sensor data.");
+		k_timer_stop(&my_timer);
+		return;
+	}
+
+	else if (ret < 0)
 	{
 		LOG_ERR("Could not get sample (%d)", ret);
 		return;
@@ -41,14 +61,11 @@ static void timer_callback(struct k_timer *dummy)
 	last_val = val;
 }
 
-// Define a timer
-K_TIMER_DEFINE(my_timer, timer_callback, NULL);
-
 int main()
 {
 	LOG_INF("Zephyr Example Application %s\n", APP_VERSION_STRING);
 
-	// sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
+	sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
 
 	while (!device_is_ready(sensor))
 	{
