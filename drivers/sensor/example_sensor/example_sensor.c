@@ -25,6 +25,8 @@ struct example_sensor_data
 static int example_sensor_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	struct example_sensor_data *data = dev->data;
+	int value;
+	int ret = fscanf(data->csv_file, "%d", &value);
 
 	if (!data->csv_file)
 	{
@@ -32,26 +34,22 @@ static int example_sensor_sample_fetch(const struct device *dev, enum sensor_cha
 		return -ENOENT;
 	}
 
-	int value;
-	if (fscanf(data->csv_file, "%d", &value) == 1)
+		if (ret == 1)
 	{
 		data->state = value;
 	}
+	else if (ret == EOF)
+	{
+		LOG_INF("CSV file ended, stopping sensor updates");
+		fclose(data->csv_file);
+		data->csv_file = NULL;
+		data->state = 0;
+		return -ENODATA;
+	}
 	else
 	{
-		if (feof(data->csv_file))
-		{
-			LOG_INF("CSV file ended, stopping sensor updates");
-			fclose(data->csv_file);
-			data->csv_file = NULL;
-			data->state = 0;
-			return -ENODATA;
-		}
-
-		{
-			LOG_ERR("Malformed CSV row");
-			return -EINVAL;
-		}
+		LOG_ERR("Malformed CSV row");
+		return -EINVAL;
 	}
 
 	return 0;
