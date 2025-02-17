@@ -8,3 +8,11 @@ config EXAMPLE_SENSOR
 	select GPIO
 	help
 	  Enable example sensor
+
+config EXAMPLE_SENSOR_CSV_FILE_PATH 
+	string "Path to csv file"
+	default "../MOCK_DATA.csv" 
+
+config EXAMPLE_SENSOR_BUFFER_SIZE
+	int "Line buffer size"
+	default 128
